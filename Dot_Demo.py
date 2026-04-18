@@ -5,8 +5,11 @@ Streamlit web app for beta testing
 Run: streamlit run dot_demo.py
 """
 import streamlit as st
-import os
+from crewai import Agent, Task, Crew, LLM
+from crewai.tools import tool
+from langchain_community.tools import DuckDuckGoSearchRun
 from datetime import datetime
+import os
 
 # Page config
 st.set_page_config(
@@ -14,6 +17,24 @@ st.set_page_config(
     page_icon="🚦",
     layout="wide"
 )
+
+# Set API keys from secrets (cloud LLM only)
+for key in ["GROQ_API_KEY"]:
+    if key in st.secrets:
+        os.environ[key] = st.secrets[key]
+
+# Cloud LLM (Groq — fast, reliable for public deploy)
+llm = LLM(
+    model="groq/llama-3.3-70b-versatile",
+    api_key=st.secrets["GROQ_API_KEY"],
+    temperature=0.1,
+)
+
+# Wrapped search tool
+@tool("DuckDuckGo Search")
+def duckduckgo_search(query: str) -> str:
+    """Search the web for real-time signals."""
+    return DuckDuckGoSearchRun().run(query)
 
 # Demo data
 PERMIT_TYPES = [
@@ -25,8 +46,6 @@ PERMIT_TYPES = [
     "Event Permit"
 ]
 
-# Simulated API key (in production, use st.secrets)
-GROK_API_KEY = os.environ.get("GROK_API_KEY", "demo-mode")
 
 st.title("🚦 Louisiana DOT Permitting Portal")
 st.markdown("**AI-Powered Automated Permitting Demo**")
