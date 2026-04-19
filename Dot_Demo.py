@@ -1,5 +1,3 @@
-
- ```python
    """
    Louisiana DOT Permitting Automation Demo
    Enhanced Version with Human-in-the-Loop Checkpoints
