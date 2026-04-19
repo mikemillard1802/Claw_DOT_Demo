@@ -1,7 +1,7 @@
-   """Louisiana DOT Permitting Automation Demo
+"""Louisiana DOT Permitting Automation Demo
    Enhanced Version with Human-in-the-Loop Checkpoints
    Run: streamlit run dot_demo.py
-   """
+"""
    import streamlit as st
    import time
    from datetime import datetime, timedelta
