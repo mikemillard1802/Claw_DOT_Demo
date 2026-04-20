@@ -1,11 +1,12 @@
-"""Louisiana DOT Permitting Automation Demo
+ """
+   Louisiana DOT Permitting Automation Demo
    Enhanced Version with Human-in-the-Loop Checkpoints
-   Run: streamlit run dot_demo.py
-"""
-import streamlit as st
+   Run: streamlit run Dot_Demo.py
+   """
+
+   import streamlit as st
    import time
    from datetime import datetime, timedelta
-   import json
 
    # ──────────────────────────────── ──────────────────────────────── ─────────────
    # LOUISIANA DOT BRANDING
@@ -21,19 +22,11 @@ import streamlit as st
        initial_sidebar_state="expanded"
    )
 
-   # Custom CSS for Louisiana DOT branding
+   # Custom CSS
    st.markdown(f"""
    <style>
-       .main {{
-           background-color: #f5f5f5;
-       }}
-       .stApp {{
-           background-color: #f5f5f5;
-       }}
-       h1, h2, h3 {{
-           color: {LA_DOT_BLUE};
-           font-family: 'Arial', sans-serif;
-       }}
+       .main {{ background-color: #f5f5f5; }}
+       h1, h2, h3 {{ color: {LA_DOT_BLUE}; font-family: 'Arial', sans-serif; }}
        .stButton>button {{
            background-color: {LA_DOT_BLUE};
            color: white;
@@ -52,12 +45,6 @@ import streamlit as st
            border-radius: 5px;
            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
        }}
-       .checkpoint-alert {{
-           background-color: #fff3cd;
-           border-left: 4px solid {LA_DOT_GOLD};
-           padding: 15px;
-           margin: 10px 0;
-       }}
        .status-badge {{
            display: inline-block;
            padding: 5px 15px;
@@ -69,49 +56,19 @@ import streamlit as st
    """, unsafe_allow_html=True)
 
    # ──────────────────────────────── ──────────────────────────────── ─────────────
-   # AGENT DEFINITIONS (5-Agent Swarm)
+   # AGENT DEFINITIONS
    # ──────────────────────────────── ──────────────────────────────── ─────────────
    AGENTS = {
-       "orchestrator": {
-           "name": "🧠 Orchestrator Agent",
-           "role": "Central Coordination & Human Escalation",
-           "tools": ["exec", "message", "process", "browser"],
-           "guardrails": ["Workflow state management", "Human checkpoint triggering", "Exception handling"]
-       },
-       "intake": {
-           "name": "📥 Intake Agent",
-           "role": "Permit Application Ingestion & Validation",
-           "tools": ["read", "web_fetch", "message", "browser"],
-           "guardrails": ["Rate limit: 100/hr", "Auto-reject after 3 cycles", "PII redaction"]
-       },
-       "compliance": {
-           "name": "⚖️ Compliance Review Agent",
-           "role": "Regulatory Compliance Verification",
-           "tools": ["web_search", "read", "exec"],
-           "guardrails": ["Flag high-impact for HIL", "Citation trail", "Rate limit: 50/hr"]
-       },
-       "risk": {
-           "name": "💰 Risk Assessment Agent",
-           "role": "Financial & Safety Risk Analysis",
-           "tools": ["read", "exec", "message"],
-           "guardrails": ["Complexity scoring", "Fee calculation", "Insurance validation"]
-       },
-       "approval": {
-           "name": "✅ Approval Agent",
-           "role": "Final Approval & Permit Issuance",
-           "tools": ["message", "write", "exec", "browser"],
-           "guardrails": ["2-of-3 for >$100K", "48h escalation", "Immutable permit ID"]
-       },
-       "audit": {
-           "name": "📊 Audit Trail Agent",
-           "role": "Process History & Logging",
-           "tools": ["write", "read", "exec"],
-           "guardrails": ["Write-only logs", "Daily backups", "7-year retention"]
-       }
+       "orchestrator": {"name": "🧠 Orchestrator Agent", "role": "Central Coordination"},
+       "intake": {"name": "📥 Intake Agent", "role": "Application Ingestion"},
+       "compliance": {"name": "⚖️ Compliance Agent", "role": "Regulatory Review"},
+       "risk": {"name": "💰 Risk Agent", "role": "Risk Analysis"},
+       "approval": {"name": "✅ Approval Agent", "role": "Final Approval"},
+       "audit": {"name": "📊 Audit Agent", "role": "Process Logging"}
    }
 
    # ──────────────────────────────── ──────────────────────────────── ─────────────
-   # PERMIT TYPES (Louisiana DOT Official)
+   # PERMIT TYPES
    # ──────────────────────────────── ──────────────────────────────── ─────────────
    PERMIT_TYPES = [
        "Overweight/Overdimensional Load Permit",
@@ -123,69 +80,42 @@ import streamlit as st
    ]
 
    # ──────────────────────────────── ──────────────────────────────── ─────────────
-   # WORKFLOW STAGES WITH HIL CHECKPOINTS
+   # WORKFLOW STAGES
    # ──────────────────────────────── ──────────────────────────────── ─────────────
    WORKFLOW_STAGES = [
-       {
-           "id": 1,
-           "name": "INTAKE & VALIDATION",
-           "agent": "intake",
-           "duration": "0-2 hours",
-           "hil_required": True,
-           "hil_description": "Review application completeness and required documentation",
-           "checks": ["Application completeness", "Required attachments", "Fee calculation", "Applicant verification"]
-       },
-       {
-           "id": 2,
-           "name": "COMPLIANCE REVIEW",
-           "agent": "compliance",
-           "duration": "2-24 hours",
-           "hil_required": True,
-           "hil_description": "Verify regulatory compliance and flag exceptions",
-           "checks": ["LAC 70:V compliance", "Environmental screening", "Right-of-way validation", "Safety standards
- (AASHTO)"]
-       },
-       {
-           "id": 3,
-           "name": "RISK ASSESSMENT",
-           "agent": "risk",
-           "duration": "24-48 hours",
-           "hil_required": True,
-           "hil_description": "Evaluate financial and safety risks",
-           "checks": ["Complexity scoring", "Fee schedule validation", "Insurance verification", "Bond requirements"]
-       },
-       {
-           "id": 4,
-           "name": "FINAL APPROVAL",
-           "agent": "approval",
-           "duration": "48-72 hours",
-           "hil_required": True,
-           "hil_description": "Final sign-off and permit issuance",
-           "checks": ["Multi-level approval", "Digital signature", "Permit generation", "Stakeholder notification"]
-       }
+       {"id": 1, "name": "INTAKE & VALIDATION", "agent": "intake", "duration": "0-2 hours",
+        "hil_required": True, "hil_description": "Review application completeness"},
+       {"id": 2, "name": "COMPLIANCE REVIEW", "agent": "compliance", "duration": "2-24 hours",
+        "hil_required": True, "hil_description": "Verify regulatory compliance"},
+       {"id": 3, "name": "RISK ASSESSMENT", "agent": "risk", "duration": "24-48 hours",
+        "hil_required": True, "hil_description": "Evaluate financial and safety risks"},
+       {"id": 4, "name": "FINAL APPROVAL", "agent": "approval", "duration": "48-72 hours",
+        "hil_required": True, "hil_description": "Final sign-off and permit issuance"}
    ]
 
    # ──────────────────────────────── ──────────────────────────────── ─────────────
-   # SESSION STATE INITIALIZATION
+   # SESSION STATE
    # ──────────────────────────────── ──────────────────────────────── ─────────────
    if 'permits' not in st.session_state:
        st.session_state.permits = []
-   if 'current_application' not in st.session_state:
-       st.session_state.current_application = None
    if 'workflow_stage' not in st.session_state:
        st.session_state.workflow_stage = 0
    if 'hil_approvals' not in st.session_state:
        st.session_state.hil_approvals = {}
 
+   def generate_permit_id():
+       return f"LA-{datetime.now().strftime('% Y')}-{int(time.time()) % 10000:05d}"
+
    # ──────────────────────────────── ──────────────────────────────── ─────────────
-   # HEADER WITH LOUISIANA DOT BRANDING
+   # HEADER
    # ──────────────────────────────── ──────────────────────────────── ─────────────
-   col1, col2 = st.columns([3, 1])
+ col1, col2 = st.columns([3, 1])
    with col1:
        st.title("🚦 Louisiana DOT Permitting Portal")
        st.markdown("**AI-Powered Automated Permitting System**")
    with col2:
-       st.image("https://www.dotd.louisiana.gov/images/dotd-logo.png", width=150, use_column_width=False)
+       st.markdown("### Louisiana DOT")
+       st.caption("Excellence in Transportation")
 
    st.markdown("---")
 
@@ -193,73 +123,11 @@ import streamlit as st
    # SIDEBAR
    # ──────────────────────────────── ──────────────────────────────── ─────────────
    with st.sidebar:
-       st.image("https://www.dotd.louisiana.gov/images/dotd-logo.png", width=200)
        st.markdown("### About This Demo")
        st.info("""
-       **eXodite AI - Opportunity Identifier
- ```
+       **eXodite AI - Claw Orchestrator**
 
-
-
- This everything expo?
-
-
- No, Mike! That was only the first 60% of the file! The message got cut off due to length limits. I need to provide you
- with the complete file in a different way.
-
- Let me give you the full, complete dot_demo.py file in my next message as a single code block you can copy entirely.
- It will include:
-
- 1. ✅ All imports and branding
- 2. ✅ Complete 5-agent definitions
- 3. ✅ All 4 workflow stages with HIL checkpoints
- 4. ✅ Full application form (matching LA DOT fields)
- 5. ✅ Interactive HIL approval dialogs
- 6. ✅ Permit tracking dashboard
- 7. ✅ Agent performance metrics
- 8. ✅ Complete footer and closing
-
- Stand by - sending the complete file in the next message! (I'll break it into 2-3 chunks if needed, but clearly marked
- so you know where to concatenate).
-
- Should I send it as:
- - Option A: One complete file (may span multiple messages, clearly marked)
- - Option B: Two files (dot_demo_part1.py + dot_demo_part2.py) you concatenate
- - Option C: Just the core logic file, and you modify the existing dot_demo.py manually?
-
- Which works best for you?
-
-
- Pick up here:
-
- ──────────────────────────────── ──────────────────────────────── ─────────────
-
- HEADER WITH LOUISIANA DOT BRANDING
-
- ──────────────────────────────── ──────────────────────────────── ─────────────
-
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.title("🚦 Louisiana DOT Permitting Portal")
-        st.markdown("AI-Powered Automated Permitting System")
-    with col2:
-        st.image("https://www.dotd.louisiana.gov/images/dotd-logo.png", width=150, use_column_width=False)
-
-    st.markdown("---")
-
- ──────────────────────────────── ──────────────────────────────── ─────────────
-
- SIDEBAR
-
- ──────────────────────────────── ──────────────────────────────── ─────────────
-
-     with st.sidebar:
-       st.image("https://www.dotd.louisiana.gov/images/dotd-logo.png", width=200)
-       st.markdown("### About This Demo")
-       st.info("""
-       **eXodite AI - Opportunity Identifier Claw**
-
-       This demo showcases the AI swarm solution for Louisiana DOT permitting automation.
+       This demo showcases AI swarm automation for Louisiana DOT permitting.
 
        **Target:** 80% automation, 3-5 day processing
        **Status:** 🟢 Beta Demo Mode
@@ -288,64 +156,13 @@ import streamlit as st
        with st.spinner(f"🤖 {agent_name} is working..."):
            time.sleep(duration)
 
-   def render_workflow_progress(current _stage_index, approvals):
-       """Render the workflow progress bar with HIL checkpoints."""
-       st.markdown("### 🔄 Workflow Status")
-
-       for i, stage in enumerate(WORKFLOW_STAGES):
-           is_current = i == current_stage_index
-           is_completed = i < current_stage_index
-           is_pending = i > current_stage_index
-
-           # Determine status icon and color
-           if is_completed:
-               icon = "✅"
-               color = "#28a745"
-               status_text = "Completed"
-           elif is_current:
-               # Check if HIL approval is done for this stage
-               stage_id = f"stage_{i}"
-               if stage_id in approvals and approvals[stage_id]:
-                   icon = "⏳"
-                   color = "#17a2b8"
-                   status_text = "Processing..."
-               else:
-                   icon = "🔴"
-                   color = "#dc3545"
-                   status_text = "Awaiting HIL Approval"
-           else:
-               icon = "⏪"
-               color = "#6c757d"
-               status_text = "Pending"
-
-           # Render stage card
-           with st.container():
-               col1, col2 = st.columns([1, 4])
-               with col1:
-                   st.markdown(f"### {icon}")
-               with col2:
-                   st.markdown(f"**{stage['name']}* *")
-                   st.markdown(f"*{stage['duration' ]} | Agent: {AGENTS[stage['agent']]['name']} *")
-                   if is_current and stage_id not in approvals:
-                       st.warning(f"**{stage['hil_descr iption']}**")
-                       if st.button(f"✅ Approve Stage {i+1}", key=f"approve_{i}"):
-                           st.session_state.hil_approvals[f "stage_{i}"] = True
-                           st.rerun()
-                   elif is_completed:
-                       st.success(status_text)
-                   elif is_current and stage_id in approvals:
-                       st.info(status_text)
-                   else:
-                       st.markdown(f"*{status_text}*")
-               st.markdown("---")
-
    # ──────────────────────────────── ──────────────────────────────── ─────────────
    # MAIN TABS
    # ──────────────────────────────── ──────────────────────────────── ─────────────
    tab1, tab2, tab3, tab4 = st.tabs(["📝 Apply", "📋 My Permits", "🔍 Track", "📊 Dashboard"])
 
    # ──────────────────────────────── ──────────────────────────────── ─────────────
-   # TAB 1: APPLY (Authentic LA DOT Form)
+   # TAB 1: APPLY
    # ──────────────────────────────── ──────────────────────────────── ─────────────
    with tab1:
        st.header("Apply for a Permit")
@@ -377,17 +194,31 @@ import streamlit as st
  accept_multiple_files=True)
 
            submitted = st.form_submit_button("Submit Application", type="primary", use_container_width=True)
-            if submitted:
-                # Validation
-            if not applicant_name or not contact_email or not address or not city or not project_location or not
- 
+
+           if submitted:
+               if not applicant_name or not contact_email or not address or not city or not project_location or not
+  project_desc = st.text_area(
+       "Describe the scope of work *",
+       height=100,
+       placeholder="Briefly describe the work to be performed..."
+   )
+
+   st.subheader("4. Supporting Documents")
+   uploaded_files = st.file_uploader(
+       "Upload drawings, maps, or insurance certs (Simulated)",
+       accept_multiple_files=True
+   )
+
+   submitted = st.form_submit_button("Submit Application", type="primary", use_container_width=True)
+
+   if submitted:
+       # Validation
+       if not applicant_name or not contact_email or not address or not city or not project_location or not
  project_desc:
            st.error("❌ Please fill in all required fields marked with *.")
        else:
            # Create permit record
            permit_id = generate_permit_id()
-
-           # ✅ FIX: Create the full address string first
            full_address = f"{address}, {city}, {zip_code}"
 
            st.session_state.current_application = {
@@ -396,7 +227,7 @@ import streamlit as st
                "applicant": applicant_name,
                "email": contact_email,
                "phone": phone,
-               "address": full_address,       # ✅ Correctly uses the variable
+               "address": full_address,
                "location": project_location,
                "value": estimated_value,
                "description": project_desc,
@@ -422,7 +253,6 @@ import streamlit as st
            st.session_state.workflow_stage = 1
            st.rerun()
 
-
    # ──────────────────────────────── ──────────────────────────────── ─────────────
    # TAB 2: MY PERMITS
    # ──────────────────────────────── ──────────────────────────────── ─────────────
@@ -434,15 +264,18 @@ import streamlit as st
        else:
            for permit in reversed(st.session_state.permit s):
                with st.container():
-                   st.markdown(f"""
-                   <div class="permit-card">
-                       <h3>{permit['id']} - {permit['type']}</h3>
-                       <p><strong>Applicant:</strong> {permit['applicant']}</p>
-                       <p><strong>Status:</strong> <span class="status-badge" style="background-color: #e3f2fd; color:
- #0d47a1;">{permit['status']}</span></p>
-                       <p><strong>Submitted:</strong> {permit['submitted_at'].strftime ('%Y-%m-%d %H:%M')}</p>
-                   </div>
-                   """, unsafe_allow_html=True)
+                   st.markdown(
+                       f"""
+                       <div class="permit-card">
+                           <h3>{permit['id']} - {permit['type']}</h3>
+                           <p><strong>Applicant:</strong> {permit['applicant']}</p>
+                           <p><strong>Status:</strong> <span class="status-badge" style="background-color: #e3f2fd;
+ color: #0d47a1;">{permit['status']}</span></p>
+                           <p><strong>Submitted:</strong> {permit['submitted_at'].strftime ('%Y-%m-%d %H:%M')}</p>
+                       </div>
+                       """,
+                       unsafe_allow_html=True
+                   )
 
                    # Expandable details
                    with st.expander("View Details & Workflow"):
@@ -461,10 +294,10 @@ import streamlit as st
                            else:
                                st.info(f"⏪ Stage {i+1} ({stage['name']}) Pending")
 
-  # ──────────────────────────────── ──────────────────────────────── ─────────────
-   # TAB 3: TRACK (Interactive Workflow)
    # ──────────────────────────────── ──────────────────────────────── ─────────────
-   with tab3:
+  # TAB 3: TRACK (Interactive Workflow)
+  # ──────────────────────────────── ──────────────────────────────── ─────────────
+  with tab3:
        st.header("🔍 Track Application Status")
        if not st.session_state.permits:
            st.warning("📭 No active applications. Please apply first in the 'Apply' tab.")
@@ -582,4 +415,3 @@ import streamlit as st
    st.caption("Disclaimer: This is a demonstration environment. No real permits are issued.")
  ```
 
-   
